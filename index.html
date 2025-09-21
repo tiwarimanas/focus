@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Bento Pomodoro + Tasks</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --bg-accent: #eef2f7;
+      --card: rgba(255,255,255,0.7);
+      --border: rgba(16,24,40,0.08);
+      --text: #0b1220;
+      --muted: #5c6b86;
+      --accent: #6b8afd;
+      --accent-2: #4ad1c8;
+      --danger: #ff6b6b;
+      --ring-track: #e6eaf2;
+      --ring: #6b8afd;
+      --shadow: 0 10px 30px rgba(16,24,40,0.08);
+      --glass-blur: saturate(160%) blur(8px);
+      --focus: 25;
+      --short: 5;
+      --long: 15;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1220;
+        --bg-accent: #0e1628;
+        --card: rgba(20,24,38,0.6);
+        --border: rgba(255,255,255,0.06);
+        --text: #eef2f7;
+        --muted: #9fb0cc;
+        --accent: #7ea3ff;
+        --accent-2: #55e0d6;
+        --danger: #ff7d7d;
+        --ring-track: #192235;
+        --ring: #7ea3ff;
+        --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      }
+    }
+    [data-theme="light"] {
+      --bg: #f6f8fb;
+      --bg-accent: #eef2f7;
+      --card: rgba(255,255,255,0.7);
+      --border: rgba(16,24,40,0.08);
+      --text: #0b1220;
+      --muted: #5c6b86;
+      --accent: #6b8afd;
+      --accent-2: #4ad1c8;
+      --danger: #ff6b6b;
+      --ring-track: #e6eaf2;
+      --ring: #6b8afd;
+      --shadow: 0 10px 30px rgba(16,24,40,0.08);
+    }
+    [data-theme="dark"] {
+      --bg: #0b1220;
+      --bg-accent: #0e1628;
+      --card: rgba(20,24,38,0.6);
+      --border: rgba(255,255,255,0.06);
+      --text: #eef2f7;
+      --muted: #9fb0cc;
+      --accent: #7ea3ff;
+      --accent-2: #55e0d6;
+      --danger: #ff7d7d;
+      --ring-track: #192235;
+      --ring: #7ea3ff;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    * { box-sizing: border-box }
+    html,body { height: 100% }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color: var(--text);
+      background:
+        radial-gradient(1200px 1200px at 10% -10%, var(--bg-accent), transparent 50%),
+        radial-gradient(1000px 1000px at 110% 20%, var(--bg-accent), transparent 50%),
+        linear-gradient(180deg, var(--bg), var(--bg));
+      transition: background 400ms ease, color 200ms ease;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 32px auto;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: 0.2px;
+    }
+    .badge {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: white;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      box-shadow: var(--shadow);
+    }
+    .theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      backdrop-filter: var(--glass-blur);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      user-select: none;
+      transition: transform .15s ease, background .2s ease, border-color .2s ease;
+    }
+    .theme-toggle:active { transform: scale(0.98) }
+    .theme-toggle svg { width: 18px; height: 18px }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 960px) {
+      .grid { grid-template-columns: 1fr }
+    }
+
+    .card {
+      position: relative;
+      border: 1px solid var(--border);
+      background: var(--card);
+      backdrop-filter: var(--glass-blur);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      overflow: clip;
+    }
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+
+    /* Timer card */
+    .timer-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+    .pill-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--muted);
+      padding: 8px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background .2s ease, color .2s ease, border-color .2s ease;
+    }
+    .pill.active {
+      color: var(--text);
+      border-color: transparent;
+      background: linear-gradient(135deg, rgba(107,138,253,0.25), rgba(84,225,212,0.25));
+    }
+
+    .timer-body {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+    @media (max-width: 640px) {
+      .timer-body { grid-template-columns: 1fr }
+    }
+    .ring {
+      position: relative;
+      width: 260px; height: 260px;
+      display: grid; place-items: center;
+      margin: 8px auto;
+      aspect-ratio: 1 / 1;
+    }
+    .ring svg { width: 100%; height: 100% }
+    .time {
+      position: absolute;
+      text-align: center;
+    }
+    .time .label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .time .value {
+      font-size: 44px;
+      letter-spacing: 1px;
+      font-weight: 800;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background .2s ease, border-color .2s ease, transform .15s ease;
+      box-shadow: var(--shadow);
+      user-select: none;
+    }
+    .btn:active { transform: translateY(1px) }
+    .btn.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff;
+      border-color: transparent;
+    }
+    .btn.icon {
+      padding: 10px;
+      width: 40px; height: 40px;
+      justify-content: center;
+    }
+    .btn.danger {
+      background: rgba(255,107,107,0.12);
+      color: var(--danger);
+      border-color: rgba(255,107,107,0.25);
+    }
+    .stat {
+      color: var(--muted);
+      font-size: 12px;
+      margin-left: auto;
+    }
+    .settings {
+      margin-top: 12px;
+      border-top: 1px dashed var(--border);
+      padding-top: 12px;
+      display: none;
+      gap: 12px;
+    }
+    .settings.open { display: grid }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 640px) {
+      .row { grid-template-columns: 1fr 1fr }
+    }
+    .input {
+      display: grid;
+      gap: 6px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 12px;
+      padding: 10px;
+    }
+    .input label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .input input {
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+      width: 100%;
+    }
+
+    /* Tasks card */
+    .add-task {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .add-task input {
+      flex: 1;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 12px;
+      outline: none;
+    }
+    .task-list {
+      display: grid;
+      gap: 8px;
+      max-height: 420px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .task {
+      display: grid;
+      grid-template-columns: 28px 1fr 32px;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      padding: 10px 12px;
+      border-radius: 12px;
+      transition: background .2s ease, border-color .2s ease;
+    }
+    .task:hover { border-color: rgba(107,138,253,0.45) }
+    .check {
+      appearance: none;
+      width: 18px; height: 18px;
+      border-radius: 6px;
+      border: 1.5px solid var(--border);
+      display: grid; place-items: center;
+      cursor: pointer;
+      background: var(--card);
+      position: relative;
+      transition: all .2s ease;
+    }
+    .check:checked {
+      border-color: transparent;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    }
+    .check:checked::after {
+      content: '';
+      width: 10px; height: 10px;
+      background: white;
+      border-radius: 3px;
+    }
+    .task .text {
+      outline: none;
+      padding: 6px 6px;
+      border-radius: 6px;
+    }
+    .task.done .text {
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+    .task .trash {
+      display: grid; place-items: center;
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: background .2s ease, color .2s ease;
+    }
+    .task .trash:hover {
+      background: rgba(255,107,107,0.12);
+      color: var(--danger);
+    }
+    .task-footer {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .filters { display: flex; gap: 8px }
+    .filter {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      background: var(--card);
+      color: var(--muted);
+    }
+    .filter.active {
+      color: var(--text);
+      background: linear-gradient(135deg, rgba(107,138,253,0.25), rgba(84,225,212,0.25));
+      border-color: transparent;
+    }
+
+    /* Decorative blobs */
+    .blob {
+      position: absolute;
+      filter: blur(40px);
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: -1;
+      inset: auto auto  -40% -40%;
+      width: 180px; height: 180px;
+      background: radial-gradient(closest-side, var(--accent), transparent 70%);
+      transform: translate(0,0) scale(1);
+    }
+    .blob.b2 {
+      inset: auto -40% -40% auto;
+      background: radial-gradient(closest-side, var(--accent-2), transparent 70%);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <!-- Logo -->
+        <svg width="28" height="28" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#6b8afd"/>
+              <stop offset="1" stop-color="#4ad1c8"/>
+            </linearGradient>
+          </defs>
+          <rect x="5" y="5" width="38" height="38" rx="12" fill="url(#g)"/>
+          <path d="M15 24h9m0 0v-9m0 9v9m9-9h-9" stroke="white" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        Bento Pomodoro
+        <span class="badge">Focus</span>
+      </div>
+      <button class="theme-toggle" id="themeBtn" title="Toggle theme">
+        <svg id="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.95 6.95-1.41-1.41M7.46 7.46 6.05 6.05m11.32 0-1.41 1.41M7.46 16.54 6.05 17.95"/><circle cx="12" cy="12" r="4" stroke-width="1.8"/></svg>
+        <svg id="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="display:none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79Z"/></svg>
+        <span id="themeLabel">Auto</span>
+      </button>
+    </header>
+
+    <div class="grid">
+      <!-- Timer Card -->
+      <section class="card" id="timerCard">
+        <div class="blob b1"></div>
+        <div class="blob b2"></div>
+
+        <div class="timer-top">
+          <div class="pill-group" id="modePills">
+            <div class="pill active" data-mode="focus">Focus</div>
+            <div class="pill" data-mode="short">Short break</div>
+            <div class="pill" data-mode="long">Long break</div>
+          </div>
+          <div class="stat"><span id="cycleStat">0</span> cycles</div>
+        </div>
+
+        <div class="timer-body">
+          <div class="ring">
+            <svg viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" stroke="var(--ring-track)" stroke-width="12" fill="none" stroke-linecap="round"/>
+              <circle id="progress" cx="60" cy="60" r="52" stroke="var(--ring)" stroke-width="12" fill="none" stroke-linecap="round"
+                      stroke-dasharray="326.7256" stroke-dashoffset="326.7256" transform="rotate(-90 60 60)"/>
+            </svg>
+            <div class="time">
+              <div class="label" id="sessionLabel">Focus</div>
+              <div class="value" id="timeText">25:00</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="controls" style="margin-bottom:10px">
+              <button class="btn primary" id="startPauseBtn">
+                <svg id="playIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"><path d="M8 5v14l11-7z" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                <svg id="pauseIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" style="display:none"><path d="M8 5h3v14H8zM13 5h3v14h-3z" stroke-width="1.8"/></svg>
+                <span id="startPauseLabel">Start</span>
+              </button>
+              <button class="btn icon" id="resetBtn" title="Reset">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 1 0 3-6.708M3 4v4h4"/></svg>
+              </button>
+              <button class="btn icon" id="skipBtn" title="Skip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M5 5l8 7-8 7V5zM19 5v14"/></svg>
+              </button>
+              <button class="btn" id="settingsBtn" title="Settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18"><path stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-3a7.4 7.4 0 0 0-.1-.9l2.1-1.6-2-3.4-2.5 1a7.8 7.8 0 0 0-1.6-.9l-.4-2.7h-4l-.4 2.7a7.8 7.8 0 0 0-1.6.9l-2.5-1-2 3.4 2.1 1.6-.1.9.1.9-2.1 1.6 2 3.4 2.5-1c.5.37 1.04.67 1.6.9l.4 2.7h4l.4-2.7c.56-.23 1.1-.53 1.6-.9l2.5 1 2-3.4-2.1-1.6c.07-.3.1-.6.1-.9Z"/></svg>
+                Durations
+              </button>
+            </div>
+
+            <div class="settings" id="settingsPanel">
+              <div class="row">
+                <div class="input">
+                  <label>Focus (min)</label>
+                  <input type="number" id="focusInput" min="1" max="120" value="25" />
+                </div>
+                <div class="input">
+                  <label>Short break (min)</label>
+                  <input type="number" id="shortInput" min="1" max="60" value="5" />
+                </div>
+                <div class="input">
+                  <label>Long break (min)</label>
+                  <input type="number" id="longInput" min="1" max="90" value="15" />
+                </div>
+                <div class="input">
+                  <label>Cycles to long</label>
+                  <input type="number" id="cyclesInput" min="1" max="12" value="4" />
+                </div>
+              </div>
+              <div style="display:flex; gap:10px; margin-top:10px">
+                <button class="btn" id="saveSettings">Save</button>
+                <button class="btn danger" id="resetSettings">Reset defaults</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tasks Card -->
+      <section class="card" id="tasksCard">
+        <h3>Checklist</h3>
+        <div class="add-task">
+          <input id="taskInput" placeholder="Add a task and press Enter..." />
+          <button class="btn" id="addTaskBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18"><path stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+            Add
+          </button>
+        </div>
+        <div class="task-list" id="taskList"></div>
+        <div class="task-footer">
+          <div><span id="leftCount">0</span> left</div>
+          <div class="filters">
+            <button class="filter active" data-filter="all">All</button>
+            <button class="filter" data-filter="active">Active</button>
+            <button class="filter" data-filter="done">Done</button>
+          </div>
+          <button class="filter" id="clearDone">Clear done</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- GSAP CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+
+  <script>
+    // Utilities
+    const $ = (q, el=document) => el.querySelector(q);
+    const $$ = (q, el=document) => Array.from(el.querySelectorAll(q));
+    const storage = {
+      get(key, fallback) {
+        try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+      },
+      set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} }
+    };
+
+    // Theme
+    const themeBtn = $('#themeBtn');
+    const themeLabel = $('#themeLabel');
+    const sun = $('#sun'), moon = $('#moon');
+    function applyTheme(mode) {
+      document.documentElement.setAttribute('data-theme', mode || '');
+      themeLabel.textContent = mode ? mode[0].toUpperCase() + mode.slice(1) : 'Auto';
+      const isDark = (mode === 'dark') || (!mode && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      sun.style.display = isDark ? 'none' : 'block';
+      moon.style.display = isDark ? 'block' : 'none';
+      gsap.fromTo(document.body, {opacity:0.9}, {opacity:1, duration:0.25, ease:'power1.out'});
+      // blob wobble
+      gsap.to('.blob.b1', {x: isDark ? 12 : -12, y: isDark ? 10 : -10, scale: isDark ? 1.08 : 1, duration:0.6, ease:'sine.inOut'});
+      gsap.to('.blob.b2', {x: isDark ? -8 : 8, y: isDark ? 6 : -6, scale: isDark ? 1.06 : 1, duration:0.6, ease:'sine.inOut'});
+    }
+    const savedTheme = storage.get('bento-theme', null);
+    applyTheme(savedTheme);
+    themeBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : current === 'light' ? '' : 'dark';
+      if (next) storage.set('bento-theme', next); else localStorage.removeItem('bento-theme');
+      applyTheme(next);
+    });
+
+    // Timer state
+    const DEFAULTS = { focus: 25, short: 5, long: 15, cyclesToLong: 4 };
+    let settings = Object.assign({}, DEFAULTS, storage.get('bento-settings', {}));
+    // Elements
+    const modePills = $('#modePills');
+    const sessionLabel = $('#sessionLabel');
+    const timeText = $('#timeText');
+    const progressCircle = $('#progress');
+    const startPauseBtn = $('#startPauseBtn');
+    const startPauseLabel = $('#startPauseLabel');
+    const playIcon = $('#playIcon');
+    const pauseIcon = $('#pauseIcon');
+    const resetBtn = $('#resetBtn');
+    const skipBtn = $('#skipBtn');
+    const cycleStat = $('#cycleStat');
+    const settingsBtn = $('#settingsBtn');
+    const settingsPanel = $('#settingsPanel');
+
+    const focusInput = $('#focusInput'), shortInput = $('#shortInput'), longInput = $('#longInput'), cyclesInput = $('#cyclesInput');
+    focusInput.value = settings.focus; shortInput.value = settings.short; longInput.value = settings.long; cyclesInput.value = settings.cyclesToLong;
+
+    // Timer logic
+    const R = 52;
+    const CIRC = 2 * Math.PI * R;
+    progressCircle.style.strokeDasharray = CIRC;
+    let state = {
+      mode: 'focus',
+      isRunning: false,
+      total: settings.focus * 60,
+      remaining: settings.focus * 60,
+      cycles: storage.get('bento-cycles', 0),
+      focusCount: storage.get('bento-focusCount', 0)
+    };
+    updateUI();
+
+    let tickHandle = null;
+    function startTimer() {
+      if (state.isRunning) return;
+      state.isRunning = true;
+      startPauseLabel.textContent = 'Pause';
+      playIcon.style.display = 'none';
+      pauseIcon.style.display = 'block';
+      animatePulse();
+      tickHandle = setInterval(tick, 1000);
+    }
+    function pauseTimer() {
+      state.isRunning = false;
+      startPauseLabel.textContent = 'Start';
+      playIcon.style.display = 'block';
+      pauseIcon.style.display = 'none';
+      if (tickHandle) clearInterval(tickHandle);
+      tickHandle = null;
+    }
+    function resetTimer() {
+      pauseTimer();
+      state.remaining = state.total = getModeSeconds(state.mode);
+      updateUI(true);
+      gsap.fromTo('#timerCard .ring', {scale:0.98}, {scale:1, duration:0.2, ease:'power2.out'});
+    }
+    function nextSession() {
+      // Determine next mode based on cycles
+      if (state.mode === 'focus') {
+        state.focusCount += 1;
+        storage.set('bento-focusCount', state.focusCount);
+        if (state.focusCount % settings.cyclesToLong === 0) setMode('long');
+        else setMode('short');
+      } else {
+        setMode('focus');
+        state.cycles += 1;
+        storage.set('bento-cycles', state.cycles);
+      }
+    }
+    function setMode(mode) {
+      state.mode = mode;
+      state.total = state.remaining = getModeSeconds(mode);
+      updatePills();
+      updateUI(true);
+      pulseSwap();
+    }
+    function getModeSeconds(mode) {
+      return (mode === 'focus' ? settings.focus : mode === 'short' ? settings.short : settings.long) * 60;
+    }
+
+    function tick() {
+      if (!state.isRunning) return;
+      state.remaining -= 1;
+      if (state.remaining < 0) {
+        chime();
+        nextSession();
+        // continue running into next session automatically
+        return;
+      }
+      updateUI();
+    }
+
+    function updateUI(jump=false) {
+      // Time
+      const m = Math.floor(state.remaining / 60);
+      const s = state.remaining % 60;
+      timeText.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      // Label
+      sessionLabel.textContent = state.mode === 'focus' ? 'Focus' : state.mode === 'short' ? 'Short break' : 'Long break';
+      cycleStat.textContent = String(state.cycles);
+      // Progress
+      const progress = 1 - (state.remaining / state.total);
+      const offset = CIRC * (1 - progress);
+      if (jump) {
+        progressCircle.style.strokeDashoffset = offset;
+      } else {
+        gsap.to(progressCircle, {strokeDashoffset: offset, duration: 0.6, ease:'power2.out'});
+      }
+      // Ring color
+      const ringColor = state.mode === 'focus' ? 'var(--ring)' : state.mode === 'short' ? 'var(--accent-2)' : 'var(--accent)';
+      gsap.to(progressCircle, {stroke: ringColor, duration: 0.4, ease:'sine.out'});
+    }
+
+    function updatePills() {
+      $$('.pill', modePills).forEach(p => p.classList.toggle('active', p.dataset.mode === state.mode));
+    }
+
+    function animatePulse() {
+      gsap.fromTo('#timerCard .ring', {scale:0.99}, {scale:1, duration:0.25, ease:'power1.out'});
+    }
+    function pulseSwap() {
+      gsap.fromTo('#timerCard .ring', {scale:0.95, opacity:0.85}, {scale:1, opacity:1, duration:0.35, ease:'back.out(2)'});
+    }
+    function chime() {
+      // simple beep
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.value = 880;
+        o.connect(g); g.connect(ctx.destination);
+        o.start();
+        gsap.to(g.gain, {value: 0, duration: 0.6, onComplete: () => { o.stop(); ctx.close(); }});
+      } catch {}
+    }
+
+    // Controls
+    startPauseBtn.addEventListener('click', () => {
+      state.isRunning ? pauseTimer() : startTimer();
+    });
+    resetBtn.addEventListener('click', resetTimer);
+    skipBtn.addEventListener('click', () => {
+      chime();
+      nextSession();
+    });
+    modePills.addEventListener('click', (e) => {
+      const pill = e.target.closest('.pill');
+      if (!pill) return;
+      pauseTimer();
+      setMode(pill.dataset.mode);
+    });
+
+    settingsBtn.addEventListener('click', () => {
+      settingsPanel.classList.toggle('open');
+      gsap.fromTo(settingsPanel, {opacity:0, y:-6}, {opacity:1, y:0, duration:0.25, ease:'power2.out'});
+    });
+    $('#saveSettings').addEventListener('click', () => {
+      const f = clampInt(focusInput.value, 1, 120);
+      const s = clampInt(shortInput.value, 1, 60);
+      const l = clampInt(longInput.value, 1, 90);
+      const c = clampInt(cyclesInput.value, 1, 12);
+      settings = {focus: f, short: s, long: l, cyclesToLong: c};
+      storage.set('bento-settings', settings);
+      setMode(state.mode); // refresh times for current mode
+      settingsPanel.classList.remove('open');
+    });
+    $('#resetSettings').addEventListener('click', () => {
+      settings = {...DEFAULTS};
+      storage.set('bento-settings', settings);
+      focusInput.value = settings.focus; shortInput.value = settings.short; longInput.value = settings.long; cyclesInput.value = settings.cyclesToLong;
+      setMode('focus');
+      settingsPanel.classList.remove('open');
+    });
+    function clampInt(v, min, max) { v = parseInt(v||0,10); return Math.max(min, Math.min(max, v)); }
+
+    // Tasks
+    const taskInput = $('#taskInput');
+    const addTaskBtn = $('#addTaskBtn');
+    const taskList = $('#taskList');
+    const leftCount = $('#leftCount');
+    const clearDoneBtn = $('#clearDone');
+    const filters = $$('.filter');
+
+    let tasks = storage.get('bento-tasks', []);
+    let filter = 'all';
+    renderTasks();
+
+    addTaskBtn.addEventListener('click', onAddTask);
+    taskInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') onAddTask();
+    });
+
+    filters.forEach(btn => btn.addEventListener('click', () => {
+      filters.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filter = btn.dataset.filter;
+      renderTasks();
+    }));
+
+    clearDoneBtn.addEventListener('click', () => {
+      tasks = tasks.filter(t => !t.done);
+      persistTasks();
+      renderTasks(true);
+    });
+
+    function onAddTask() {
+      const text = taskInput.value.trim();
+      if (!text) return;
+      const t = { id: crypto.randomUUID(), text, done: false };
+      tasks.unshift(t);
+      taskInput.value = '';
+      persistTasks();
+      renderTasks();
+      const el = $(`.task[data-id="${t.id}"]`);
+      if (el) gsap.fromTo(el, {y:10, opacity:0}, {y:0, opacity:1, duration:0.25, ease:'power2.out'});
+    }
+
+    function persistTasks() { storage.set('bento-tasks', tasks); }
+
+    function renderTasks(soft=false) {
+      let view = tasks;
+      if (filter === 'active') view = tasks.filter(t => !t.done);
+      if (filter === 'done') view = tasks.filter(t => t.done);
+      if (!soft) taskList.innerHTML = '';
+      // Build
+      const frag = document.createDocumentFragment();
+      view.forEach(t => {
+        const item = document.createElement('div');
+        item.className = 'task' + (t.done ? ' done' : '');
+        item.dataset.id = t.id;
+        item.innerHTML = `
+          <input class="check" type="checkbox" ${t.done ? 'checked' : ''} />
+          <div class="text" contenteditable="true"></div>
+          <div class="trash" title="Delete">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+              <path stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M8 6l1-2h6l1 2M6 6l1 14h10l1-14M10 10v8M14 10v8"/>
+            </svg>
+          </div>
+        `;
+        $('.text', item).textContent = t.text;
+
+        // Events
+        const check = $('.check', item);
+        const text = $('.text', item);
+        const trash = $('.trash', item);
+        check.addEventListener('change', () => {
+          t.done = check.checked;
+          item.classList.toggle('done', t.done);
+          persistTasks();
+          updateCounts();
+        });
+        text.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); text.blur(); }
+        });
+        text.addEventListener('blur', () => {
+          const nt = text.textContent.trim();
+          if (!nt) {
+            // delete empty
+            gsap.to(item, {y:10, opacity:0, duration:0.2, ease:'power1.in', onComplete: () => {
+              tasks = tasks.filter(x => x.id !== t.id);
+              persistTasks();
+              renderTasks(true);
+            }});
+          } else if (nt !== t.text) {
+            t.text = nt; persistTasks();
+            gsap.fromTo(item, {backgroundColor: 'transparent'}, {backgroundColor:'rgba(107,138,253,0.12)', duration:0.25, yoyo:true, repeat:1});
+          }
+          updateCounts();
+        });
+        trash.addEventListener('click', () => {
+          gsap.to(item, {y:10, opacity:0, duration:0.2, ease:'power1.in', onComplete: () => {
+            tasks = tasks.filter(x => x.id !== t.id);
+            persistTasks();
+            renderTasks(true);
+            updateCounts();
+          }});
+        });
+
+        frag.appendChild(item);
+      });
+      if (!soft) taskList.appendChild(frag);
+      updateCounts();
+    }
+
+    function updateCounts() {
+      leftCount.textContent = tasks.filter(t => !t.done).length;
+    }
+
+    // Entrance animations
+    gsap.from('.title', {y:12, opacity:0, duration:0.35, ease:'power2.out', delay:0.05});
+    gsap.from('#timerCard', {y:16, opacity:0, duration:0.35, ease:'power2.out', delay:0.08});
+    gsap.from('#tasksCard', {y:18, opacity:0, duration:0.35, ease:'power2.out', delay:0.12});
+  </script>
+</body>
+</html>
